@@ -1,0 +1,25 @@
+<html>
+    <body>
+        BTC exchange rates
+        <div id="rates"></div>
+    </body>
+    <script>
+        var rates = document.getElementById("rates");
+        var wsURL = "ws://localhost:8080/rates"
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const since = urlParams.get("since");
+        if (since) {
+            wsURL += "?since=" + since;
+        }
+        
+        const ws = new WebSocket(wsURL);
+        ws.onmessage = (msg) => {
+            newP = document.createElement("p");
+            newContent = document.createTextNode(msg.data);
+            newP.appendChild(newContent); 
+
+            rates.append(newP);
+        }
+    </script>
+</html>

@@ -1,0 +1,35 @@
+version: "3.7"
+
+networks:
+  exchange_network:
+    name: exchange_network
+
+services:
+  exchange:
+    image: exchange
+    build:
+      dockerfile: Dockerfile
+    environment:
+      HTTP_PORT: 8080
+      CURRENCIES: "USD"
+      INTERVAL: "5s"
+      TTL: "24h"
+      SUBSCRIPTION_BUFFER_SIZE: 5
+      COINDESK_BASE_URL: "http://coindesk:8083"
+      COINDESK_TIMEOUT: "1s"
+
+    working_dir: /app
+    ports:
+      - "8080:8080"
+    networks:
+      - exchange_network
+
+  coindesk:
+    image: jordimartin/mmock
+    volumes:
+      - ./mocks/coindesk:/config
+    ports:
+      - "8083:8083"
+      - "8082:8082"
+    networks:
+      - exchange_network
