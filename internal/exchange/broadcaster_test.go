@@ -1,7 +1,6 @@
 package exchange
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -11,53 +10,49 @@ import (
 
 func TestSubscribe(t *testing.T) {
 	updates := make(chan RateUpdated, 10)
-	boradcaster := NewBroadcaster(updates, 5)
+	broadcaster := NewBroadcaster(updates, 5)
 
 	// Test successful subscription
-	subscription, err := boradcaster.Subscribe("test-id")
+	subscription, err := broadcaster.Subscribe("test-id")
 	require.NoError(t, err)
 	assert.NotNil(t, subscription)
 
 	// Test duplicate subscription
-	_, err = boradcaster.Subscribe("test-id")
+	_, err = broadcaster.Subscribe("test-id")
 	assert.Error(t, err)
 	assert.Equal(t, "there is another subscription with the same id (test-id), it can not be added", err.Error())
 }
 
 func TestUnsubscribe(t *testing.T) {
 	updates := make(chan RateUpdated, 10)
-	boradcaster := NewBroadcaster(updates, 5)
+	broadcaster := NewBroadcaster(updates, 5)
 
 	// Subscribe first
-	subscription, err := boradcaster.Subscribe("test-id")
+	subscription, err := broadcaster.Subscribe("test-id")
 	require.NoError(t, err)
 
 	// Test unsubscribe
-	boradcaster.Unsubscribe("test-id")
+	broadcaster.Unsubscribe("test-id")
 
 	// Verify channel is closed
 	_, ok := <-subscription
 	assert.False(t, ok)
 
 	// Test unsubscribe non-existent subscription (should not panic)
-	boradcaster.Unsubscribe("non-existent")
+	broadcaster.Unsubscribe("non-existent")
 }
 
 func TestBroadcast(t *testing.T) {
 	updates := make(chan RateUpdated, 10)
-	boradcaster := NewBroadcaster(updates, 5)
-
-	// Create context for test
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	broadcaster := NewBroadcaster(updates, 5)
 
 	// Start listener in goroutine
-	go boradcaster.ListenAndServer(ctx)
+	go broadcaster.ListenAndServer()
 
 	// Create two subscriptions
-	sub1, err := boradcaster.Subscribe("sub1")
+	sub1, err := broadcaster.Subscribe("sub1")
 	require.NoError(t, err)
-	sub2, err := boradcaster.Subscribe("sub2")
+	sub2, err := broadcaster.Subscribe("sub2")
 	require.NoError(t, err)
 
 	// Create test update
@@ -89,18 +84,14 @@ func TestBroadcast(t *testing.T) {
 
 func TestListenAndServer(t *testing.T) {
 	updates := make(chan RateUpdated, 10)
-	boradcaster := NewBroadcaster(updates, 5)
+	broadcaster := NewBroadcaster(updates, 5)
 
 	// Create subscription
-	sub, err := boradcaster.Subscribe("test-id")
+	sub, err := broadcaster.Subscribe("test-id")
 	require.NoError(t, err)
 
-	// Create context for test
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// Start listener in goroutine
-	go boradcaster.ListenAndServer(ctx)
+	go broadcaster.ListenAndServer()
 
 	// Create test update
 	update := RateUpdated{
@@ -129,16 +120,16 @@ func TestListenAndServer(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	updates := make(chan RateUpdated, 10)
-	boradcaster := NewBroadcaster(updates, 5)
+	broadcaster := NewBroadcaster(updates, 5)
 
 	// Create multiple subscriptions
-	sub1, err := boradcaster.Subscribe("sub1")
+	sub1, err := broadcaster.Subscribe("sub1")
 	require.NoError(t, err)
-	sub2, err := boradcaster.Subscribe("sub2")
+	sub2, err := broadcaster.Subscribe("sub2")
 	require.NoError(t, err)
 
 	// Close all subscriptions
-	boradcaster.Close()
+	broadcaster.Close()
 
 	// Verify all channels are closed
 	_, ok := <-sub1
@@ -149,17 +140,13 @@ func TestClose(t *testing.T) {
 
 func TestBroadcastWithFullChannel(t *testing.T) {
 	updates := make(chan RateUpdated, 10)
-	boradcaster := NewBroadcaster(updates, 1) // Small buffer size
-
-	// Create context for test
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	broadcaster := NewBroadcaster(updates, 1) // Small buffer size
 
 	// Start listener in goroutine
-	go boradcaster.ListenAndServer(ctx)
+	go broadcaster.ListenAndServer()
 
 	// Create subscription
-	sub, err := boradcaster.Subscribe("test-id")
+	sub, err := broadcaster.Subscribe("test-id")
 	require.NoError(t, err)
 
 	// Create test updates

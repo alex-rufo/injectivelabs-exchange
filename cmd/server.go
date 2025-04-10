@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"context"
+	"errors"
+	"log"
 	"time"
 
 	"github.com/alex-rufo/exchange/cmd/server"
@@ -20,8 +23,8 @@ var serverCmd = &cobra.Command{
 		coindeskClient := pkgcoindesk.NewClient(coindeskBaseURL, coindeskTimeout)
 		coindeskFetcher := coindesk.NewPeriodicallyFetcher(coindeskClient, toCurrencies, fetchInterval)
 		repository := exchange.NewInMemoryRepository(int(repositoryTTL / fetchInterval))
-		boradcaster := exchange.NewBroadcaster(updatesChannel, subscriptionBufferSize)
-		server := server.NewServer(boradcaster, repository)
+		broadcaster := exchange.NewBroadcaster(updatesChannel, subscriptionBufferSize)
+		server := server.NewServer(broadcaster, repository)
 
 		t, _ := tomb.WithContext(cmd.Context())
 
@@ -29,7 +32,7 @@ var serverCmd = &cobra.Command{
 		// In order to do so, we are going to create a new subscription that,
 		// instead of sending the update into a WS, will persists them into a repository.
 		t.Go(func() error {
-			updates, err := boradcaster.Subscribe(uuid.NewString())
+			updates, err := broadcaster.Subscribe(uuid.NewString())
 			if err != nil {
 				return err
 			}
@@ -40,7 +43,7 @@ var serverCmd = &cobra.Command{
 
 		// Listen for exchange rate updates and propage them to the multiple subscriptions.
 		t.Go(func() error {
-			boradcaster.ListenAndServer(cmd.Context())
+			broadcaster.ListenAndServer()
 			return nil
 		})
 
@@ -60,12 +63,15 @@ var serverCmd = &cobra.Command{
 		<-t.Dying()
 
 		server.Close()
-		boradcaster.Close()
+		broadcaster.Close()
 		coindeskFetcher.Close()
 		close(updatesChannel)
 
 		// Wait until all the goroutines have finished
-		t.Wait()
+		if err := t.Wait(); err != nil && !errors.Is(err, context.Canceled) {
+			log.Printf("Server closed with error: %s", err)
+			return err
+		}
 		return nil
 	},
 }

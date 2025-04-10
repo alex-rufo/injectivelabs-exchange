@@ -1,7 +1,6 @@
 package exchange
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"time"
@@ -17,20 +16,20 @@ type RateUpdated struct {
 }
 
 type Broadcaster struct {
-	updates               chan RateUpdated
-	subcriptionBufferSize int
-	subscriptions         *syncx.Map[string, chan RateUpdated]
+	updates                chan RateUpdated
+	subscriptionBufferSize int
+	subscriptions          *syncx.Map[string, chan RateUpdated]
 }
 
-func NewBroadcaster(updates chan RateUpdated, subcriptionBufferSize int) *Broadcaster {
+func NewBroadcaster(updates chan RateUpdated, subscriptionBufferSize int) *Broadcaster {
 	return &Broadcaster{
-		updates:               updates,
-		subcriptionBufferSize: subcriptionBufferSize,
-		subscriptions:         new(syncx.Map[string, chan RateUpdated]),
+		updates:                updates,
+		subscriptionBufferSize: subscriptionBufferSize,
+		subscriptions:          new(syncx.Map[string, chan RateUpdated]),
 	}
 }
 
-func (b *Broadcaster) ListenAndServer(ctx context.Context) {
+func (b *Broadcaster) ListenAndServer() {
 	for {
 		select {
 		case update, ok := <-b.updates:
@@ -62,7 +61,7 @@ func (b *Broadcaster) Close() {
 }
 
 func (b *Broadcaster) Subscribe(id string) (<-chan RateUpdated, error) {
-	subscription := make(chan RateUpdated, b.subcriptionBufferSize)
+	subscription := make(chan RateUpdated, b.subscriptionBufferSize)
 
 	_, loaded := b.subscriptions.LoadOrStore(id, subscription)
 	if loaded {

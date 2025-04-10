@@ -49,24 +49,29 @@ func NewClient(baseURL string, timeout time.Duration) *Client {
 func (c *Client) FetchBitcoinPrice(ctx context.Context) (*FetchBitcoinPriceResponse, error) {
 	url := fmt.Sprintf("%s/v1/bpi/currentprice.json", c.baseURL)
 
-	resp, err := c.client.Get(url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch data: %v", err)
+		return nil, fmt.Errorf("failed to create request: %v", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch data at %s: %v", url, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %v", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d, payload: %v", resp.StatusCode, body)
+	}
+
 	var data FetchBitcoinPriceResponse
 	if err := json.Unmarshal(body, &data); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON: %v", err)
+		return nil, fmt.Errorf("failed to parse JSON: %v, payload: %v", err, body)
 	}
 
 	return &data, nil

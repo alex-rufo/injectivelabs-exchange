@@ -61,7 +61,7 @@ func (s *Server) Close() {
 	}
 
 	if err := s.server.Close(); err != nil {
-		log.Fatalf("HTTP close error: %v", err)
+		log.Printf("HTTP close error: %v", err)
 	}
 }
 
@@ -93,7 +93,6 @@ func (s *Server) handleRateUpdates(w http.ResponseWriter, r *http.Request) {
 		for _, rate := range rates {
 			if err := s.writeToWS(conn, rate); err != nil {
 				log.Printf("Failed to send rate udpate to the websocket: %v", err)
-				continue
 			}
 		}
 	}

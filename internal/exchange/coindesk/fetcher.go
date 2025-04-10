@@ -59,6 +59,7 @@ type PeriodicallyFetcher struct {
 	fetcher  Fetcher
 	interval time.Duration
 	done     chan struct{}
+	stopped  chan struct{}
 }
 
 func NewPeriodicallyFetcher(client client, toCurrencies []string, interval time.Duration) *PeriodicallyFetcher {
@@ -66,12 +67,14 @@ func NewPeriodicallyFetcher(client client, toCurrencies []string, interval time.
 		fetcher:  *NewFetcher(client, toCurrencies),
 		interval: interval,
 		done:     make(chan struct{}),
+		stopped:  make(chan struct{}),
 	}
 }
 
 func (f *PeriodicallyFetcher) Run(ctx context.Context, output chan<- exchange.RateUpdated) {
 	ticker := time.NewTicker(f.interval)
 	defer ticker.Stop()
+	defer func() { f.stopped <- struct{}{} }()
 
 	for {
 		select {
@@ -99,5 +102,6 @@ func (f *PeriodicallyFetcher) Run(ctx context.Context, output chan<- exchange.Ra
 }
 
 func (f *PeriodicallyFetcher) Close() {
-	close(f.done)
+	close(f.done) // sends a signal to the Run function (infite loop) that it should stop.
+	<-f.stopped   // the infinite loop has finished, we can consider the Close function to be completed.
 }

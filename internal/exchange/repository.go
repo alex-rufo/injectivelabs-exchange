@@ -18,7 +18,7 @@ func NewInMemoryRepository(maxSize int) *InMemoryRepository {
 
 // Insert adds the received RateUpdated into the ring buffer. In case the ring is full,
 // the oldest rate will be overriden.
-func (r *InMemoryRepository) Insert(ctx context.Context, rate RateUpdated) error {
+func (r *InMemoryRepository) Insert(_ context.Context, rate RateUpdated) error {
 	r.rates.Value = rate
 	r.rates = r.rates.Next()
 
@@ -28,7 +28,7 @@ func (r *InMemoryRepository) Insert(ctx context.Context, rate RateUpdated) error
 // ListSince returns all the RateUpdated structs that have At newer than the passed since time.
 // TODO: we should add pagination as a very old since could return a lot of rates.
 func (r *InMemoryRepository) ListSince(ctx context.Context, since time.Time) ([]RateUpdated, error) {
-	result := []RateUpdated{}
+	var result []RateUpdated
 
 	r.rates.Do(func(a any) {
 		if a == nil {
